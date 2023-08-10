@@ -1,32 +1,88 @@
-﻿using File_Hosting.Models;
-using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
+﻿using Microsoft.AspNetCore.Mvc;
+using File_Hosting.Models;
+using MimeKit;
 
 namespace File_Hosting.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
-
-        public HomeController(ILogger<HomeController> logger)
-        {
-            _logger = logger;
+        public IActionResult Index(string fileForRename)
+        { 
+            return View(Utils.GetFilesUpload());
         }
 
-        public IActionResult Index()
+        [HttpPost]
+        [RequestSizeLimit(1048576)]
+        public async Task<IActionResult> AddFile(IFormFile uploadedFile)
         {
-            return View();
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    if (uploadedFile != null)
+                    {
+                        var fileName = System.IO.Path.GetFileName(uploadedFile.FileName);
+                        FileInfo f = new System.IO.FileInfo(fileName);
+                        using (var fileStream = new FileStream(Path.Combine(Utils.pathDir, f.Name), FileMode.Create))
+                        {
+                            await uploadedFile.CopyToAsync(fileStream);
+                        }
+                        return RedirectToAction("Index");
+                    }
+                    else
+                    {
+                        ModelState.AddModelError("", "Файл не выбран");
+                        return View("Index", Utils.GetFilesUpload());
+                    }
+                }
+                catch (Exception err)
+                {
+                    ModelState.AddModelError("", err.Message);
+                    return View("Index", Utils.GetFilesUpload());
+                }
+            }
+            else
+            {
+                ModelState.AddModelError("", "размер файла должен быть не более 1 мб.");
+                return View("Index", Utils.GetFilesUpload());
+            }
         }
 
-        public IActionResult Privacy()
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult RemoveFile(string FileName)
         {
-            return View();
+            string webRootPath = Utils.pathDir;
+
+            try
+            {
+                if (System.IO.File.Exists(Path.Combine(webRootPath, FileName)))
+                {
+                    System.IO.File.Delete(Path.Combine(webRootPath, FileName));
+
+                    return RedirectToAction("Index");
+                }
+                else
+                {
+                    ModelState.AddModelError("", "Файл не существует");
+                    return View("Index", Utils.GetFilesUpload());
+                }
+            }
+            catch (Exception err)
+            {
+                ModelState.AddModelError("", err.Message);
+                return View("Index", Utils.GetFilesUpload());
+            }
         }
 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
+        [HttpGet("download-file/{fileName}")]
+        public IActionResult DownloadFile(string fileName)
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            string webRootPath = Utils.pathDir;
+            var filePath = Path.Combine(webRootPath, fileName);
+            if (filePath == null) return NotFound();
+
+            return PhysicalFile(filePath, MimeTypes.GetMimeType(filePath), Path.GetFileName(filePath));
         }
     }
 }

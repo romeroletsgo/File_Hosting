@@ -1,8 +1,117 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "File hosting";
+    Layout = null;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+
+<!DOCTYPE html>
+<html lang="ru" class="antialiased">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>@ViewData["Title"]</title>
+	<meta name="description" content="">
+	<meta name="keywords" content="">
+	<link href="https://unpkg.com/tailwindcss@2.2.19/dist/tailwind.min.css" rel=" stylesheet">
+	<!--Regular Datatables CSS-->
+	<link href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css" rel="stylesheet">
+	<!--Responsive Extension Datatables CSS-->
+	<link href="https://cdn.datatables.net/responsive/2.2.3/css/responsive.dataTables.min.css" rel="stylesheet">
+	<link href="~/css/site.css" rel="stylesheet">
+	<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+	<link rel="stylesheet" href="~/File_Hosting.styles.css" asp-append-version="true" />
+</head>
+
+<body class="bg-gray-100 text-gray-900 tracking-wider leading-normal">
+
+	<div class="container w-full md:w-4/5 xl:w-3/5  mx-auto px-2">
+		
+		<div class="d-flex flex-column align-items-center justify-content-center">
+			<a class="pt-5" href="https://github.com/romeroletsgo" target="_blank">
+				<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" fill="currentColor" class="bi bi-github" viewBox="0 0 16 16">
+					<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+				</svg>
+			</a>
+		</div>
+		
+
+		<h1 class="flex items-center font-sans font-bold break-normal text-indigo-500 px-2 py-8 text-xl md:text-2xl">
+			<div class="m-1 p-1">
+				<h4>
+					Выберите файл для загрузки
+				</h4>
+				<form asp-action="AddFile" asp-controller="Home" method="post" enctype="multipart/form-data">
+					<div asp-validation-summary="ModelOnly"></div>
+					<div class="form-group">
+						<input class="form-control-file" type="file" name="uploadedFile" accept="image/*" id="choose-file" /><br>
+					</div>
+					<br />
+					<div class="form-group">
+						<button type="submit" class="btn btn-primary">Загрузить</button>
+					</div>
+				</form>
+			</div>
+		</h1>
+
+		<div id='recipients' class="p-8 mt-6 lg:mt-0 rounded shadow bg-white">
+
+			<table id="example" class="stripe hover" style="width:100%; padding-top: 1em;  padding-bottom: 1em;">
+				<thead>
+					<tr>
+						<th data-priority="1">№</th>
+						<th data-priority="2">Имя файла</th>
+						<th data-priority="3">Размер, Kb</th>
+						<th data-priority="4">Время загрузки</th>
+						<th data-priority="5">Действие</th>
+					</tr>
+				</thead>
+				<tbody>
+					@{
+						int i = 1;
+					}
+					@foreach (FileUpload file in Model)
+					{
+						<tr>
+							<td>@i<a name="go-item-@file.FileName"></a></td>
+							<td><a href="download-file/@file.FileName">@file.FileName</a></td>
+							<td>@Utils.ToKb(file.Size)</td>
+							<td>@file.DateLoad.ToString("dd.MM.yyyy HH:mm:ss")</td>
+							<td>
+								<form method="post">
+									<input type="hidden" name="FileName" value="@file.FileName" />
+									<button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены, что хотите удалить данный файл?'); " formaction="/Home/RemoveFile">
+										Удалить запись
+									</button>
+								</form>
+							</td>
+						</tr>
+						i += 1;
+					}
+				</tbody>
+
+			</table>
+
+		</div>
+
+	</>
+
+	<script type="text/javascript" src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+	<script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+	<script src="https://cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
+	<script>
+		$(document).ready(function() {
+
+			var table = $('#example').DataTable({
+					responsive: true
+				})
+				.columns.adjust()
+				.responsive.recalc();
+		});
+	</script>
+
+</body>
+
+</html>
